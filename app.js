@@ -1,0 +1,232 @@
+const elements = {
+    locationText: document.getElementById('location-text'),
+    dateText: document.getElementById('date-text'),
+    nextPrayerName: document.getElementById('next-prayer-name'),
+    timerDisplay: document.getElementById('time-remaining'),
+    nextPrayerTimeVal: document.getElementById('next-prayer-time-val'),
+    progressCircle: document.getElementById('progress-circle'),
+    statusMessage: document.getElementById('status-message'),
+    prayerCards: document.querySelectorAll('.prayer-card')
+};
+
+const PRAYER_NAMES = {
+    Fajr: "Subuh",
+    Dhuhr: "Dzuhur",
+    Asr: "Ashar",
+    Maghrib: "Maghrib",
+    Isha: "Isya"
+};
+
+const REQUIRED_PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+let timings = {};
+let countdownInterval;
+let nextPrayerObj = null;
+
+// Circle logic
+const circleRadius = 140; // match CSS
+const circleCircumference = 2 * Math.PI * circleRadius;
+elements.progressCircle.style.strokeDasharray = `${circleCircumference} ${circleCircumference}`;
+elements.progressCircle.style.strokeDashoffset = circleCircumference; // hidden initially
+
+function setProgress(percent) {
+    const offset = circleCircumference - (percent / 100) * circleCircumference;
+    elements.progressCircle.style.strokeDashoffset = offset;
+}
+
+async function init() {
+    setDateInfo();
+    
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            async position => {
+                const { latitude, longitude } = position.coords;
+                await fetchLocationName(latitude, longitude);
+                await fetchPrayerTimes(latitude, longitude);
+            },
+            error => {
+                console.warn("Geolocation denied or error", error);
+                elements.locationText.innerText = "Lokasi: Jakarta (Default)";
+                elements.statusMessage.innerText = "Akses lokasi ditolak, menggunakan fallback.";
+                // Fallback to Jakarta
+                fetchPrayerTimes("-6.2088", "106.8456");
+            }
+        );
+    } else {
+        elements.locationText.innerText = "Lokasi: Jakarta (Default)";
+        elements.statusMessage.innerText = "Browser tidak mendukung geolokasi.";
+        fetchPrayerTimes("-6.2088", "106.8456");
+    }
+}
+
+function setDateInfo() {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    elements.dateText.innerText = new Date().toLocaleDateString('id-ID', options);
+}
+
+async function fetchLocationName(lat, lng) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`);
+        const data = await res.json();
+        
+        // Try getting city, town, or state
+        const city = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state || "Lokasi Ditemukan";
+        elements.locationText.innerText = city;
+    } catch (e) {
+        console.error("Failed to fetch location name", e);
+        elements.locationText.innerText = "Lokasi Ditemukan";
+    }
+}
+
+async function fetchPrayerTimes(lat, lng) {
+    try {
+        // Method 11 is Majlis Ugama Islam Singapura, Method 20 is Kemenag.
+        // If left empty, API defaults intelligently. Let's use standard default to be safe broadly, or 20 for Indonesia. 
+        // We will omit method to use the API's auto detection based on location.
+        const dateStr = new Date().toISOString().split('T')[0].split('-').reverse().join('-');
+        const response = await fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}`);
+        const data = await response.json();
+
+        if (data.code === 200) {
+            timings = data.data.timings;
+            updateScheduleUI();
+            startCountdown();
+            elements.statusMessage.innerText = "Jadwal adzan termutakhirkan";
+        } else {
+            throw new Error("API returned non-200");
+        }
+    } catch (e) {
+        console.error("Failed to fetch timings", e);
+        elements.statusMessage.innerText = "Gagal mengambil jadwal waktu shalat.";
+    }
+}
+
+function updateScheduleUI() {
+    REQUIRED_PRAYERS.forEach(prayer => {
+        const timeElement = document.getElementById(`time-${prayer.toLowerCase()}`);
+        if (timeElement && timings[prayer]) {
+            // Some apis return `04:30 (WIB)`, strip anything after space
+            let cleanTime = timings[prayer].split(' ')[0];
+            timeElement.innerText = cleanTime;
+        }
+    });
+}
+
+function parsePrayerTimeToDate(timeStr, addDays = 0) {
+    const [hours, minutes] = timeStr.split(':');
+    const d = new Date();
+    d.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+    if (addDays > 0) {
+        d.setDate(d.getDate() + addDays);
+    }
+    return d;
+}
+
+function findNextPrayer() {
+    const now = new Date();
+    let next = null;
+    let minDiff = Infinity;
+    
+    // First, find today's next prayer
+    for (const prayer of REQUIRED_PRAYERS) {
+        const cleanTime = timings[prayer].split(' ')[0];
+        const prayerDate = parsePrayerTimeToDate(cleanTime);
+        const diff = prayerDate.getTime() - now.getTime();
+        
+        if (diff > 0 && diff < minDiff) {
+            minDiff = diff;
+            next = { key: prayer, time: cleanTime, date: prayerDate, isTomorrow: false };
+        }
+    }
+    
+    // If all today's prayers are passed, next is Fajr tomorrow
+    if (!next) {
+        const cleanTime = timings['Fajr'].split(' ')[0];
+        const prayerDate = parsePrayerTimeToDate(cleanTime, 1);
+        next = { key: 'Fajr', time: cleanTime, date: prayerDate, isTomorrow: true };
+    }
+    
+    return next;
+}
+
+function getPreviousPrayerDate(nextKey, isTomorrow) {
+    const index = REQUIRED_PRAYERS.indexOf(nextKey);
+    let prevIndex = index - 1;
+    let addDays = isTomorrow ? 1 : 0;
+    
+    if (prevIndex < 0) {
+        prevIndex = REQUIRED_PRAYERS.length - 1;
+        // if next is Fajr today (0), previous was Isha yesterday
+        addDays -= 1; 
+    }
+    
+    const prevKey = REQUIRED_PRAYERS[prevIndex];
+    const cleanTime = timings[prevKey].split(' ')[0];
+    return parsePrayerTimeToDate(cleanTime, addDays);
+}
+
+function startCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    
+    nextPrayerObj = findNextPrayer();
+    if(!nextPrayerObj) return;
+
+    elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key];
+    elements.nextPrayerTimeVal.innerText = nextPrayerObj.time;
+    
+    // Highlight active card
+    elements.prayerCards.forEach(card => card.classList.remove('active'));
+    const activeCard = document.querySelector(`.prayer-card[data-prayer="${nextPrayerObj.key}"]`);
+    if(activeCard) activeCard.classList.add('active');
+
+    const updateTimer = () => {
+        const now = new Date();
+        const diff = nextPrayerObj.date.getTime() - now.getTime();
+        
+        if (diff <= 0) {
+            // Time reached!
+            clearInterval(countdownInterval);
+            elements.timerDisplay.innerText = "Waktunya Adzan!";
+            setProgress(100);
+            
+            // Wait 1 minute, then start looking for the next prayer
+            setTimeout(() => {
+                startCountdown();
+            }, 60000);
+            return;
+        }
+        
+        // Calculate hrs, mins, secs
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        // Format strings
+        const h = hours.toString().padStart(2, '0');
+        const m = minutes.toString().padStart(2, '0');
+        const s = seconds.toString().padStart(2, '0');
+        
+        // Hide hours if zero for cleaner look, but keep structural layout
+        if (hours === 0) {
+            elements.timerDisplay.innerText = `${m}:${s}`;
+        } else {
+            elements.timerDisplay.innerText = `${h}:${m}:${s}`;
+        }
+
+        // Calculate progress percentage
+        const prevPrayerDate = getPreviousPrayerDate(nextPrayerObj.key, nextPrayerObj.isTomorrow);
+        const totalDuration = nextPrayerObj.date.getTime() - prevPrayerDate.getTime();
+        const elapsedTime = now.getTime() - prevPrayerDate.getTime();
+        
+        let percentage = (elapsedTime / totalDuration) * 100;
+        // Clamp between 0 and 100 just in case
+        percentage = Math.max(0, Math.min(100, percentage));
+        
+        setProgress(percentage);
+    };
+
+    updateTimer(); // Initial call
+    countdownInterval = setInterval(updateTimer, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', init);

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waktu Adzan & Hitung Mundur</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header / Location Info -->
+        <header class="header">
+            <div class="location-badge">
+                <i class="fa-solid fa-location-dot"></i>
+                <span id="location-text">Mencari lokasi...</span>
+            </div>
+            <div class="date-info" id="date-text">
+                --/--/----
+            </div>
+        </header>
+
+        <!-- Main Countdown Section -->
+        <main class="countdown-section">
+            <div class="countdown-circle">
+                <svg>
+                    <circle cx="150" cy="150" r="140"></circle>
+                    <circle cx="150" cy="150" r="140" id="progress-circle"></circle>
+                </svg>
+                <div class="countdown-content">
+                    <h2 id="next-prayer-name">Menunggu...</h2>
+                    <div class="timer-display" id="time-remaining">
+                        00:00:00
+                    </div>
+                    <p class="next-prayer-time">pada <span id="next-prayer-time-val">--:--</span></p>
+                </div>
+            </div>
+            <p class="status-message" id="status-message">Aktifkan GPS/Lokasi untuk hasil akurat</p>
+        </main>
+
+        <!-- Prayer Times List -->
+        <section class="schedule-section">
+            <h3 class="section-title">Jadwal Hari Ini</h3>
+            <div class="prayer-cards-container">
+                <div class="prayer-card" data-prayer="Fajr">
+                    <div class="prayer-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                    <div class="prayer-info">
+                        <h4>Subuh</h4>
+                        <span class="time" id="time-fajr">--:--</span>
+                    </div>
+                </div>
+                <div class="prayer-card" data-prayer="Dhuhr">
+                    <div class="prayer-icon"><i class="fa-solid fa-sun"></i></div>
+                    <div class="prayer-info">
+                        <h4>Dzuhur</h4>
+                        <span class="time" id="time-dhuhr">--:--</span>
+                    </div>
+                </div>
+                <div class="prayer-card" data-prayer="Asr">
+                    <div class="prayer-icon"><i class="fa-solid fa-cloud-sun-rain"></i></div>
+                    <div class="prayer-info">
+                        <h4>Ashar</h4>
+                        <span class="time" id="time-asr">--:--</span>
+                    </div>
+                </div>
+                <div class="prayer-card" data-prayer="Maghrib">
+                    <div class="prayer-icon"><i class="fa-solid fa-cloud-moon"></i></div>
+                    <div class="prayer-info">
+                        <h4>Maghrib</h4>
+                        <span class="time" id="time-maghrib">--:--</span>
+                    </div>
+                </div>
+                <div class="prayer-card" data-prayer="Isha">
+                    <div class="prayer-icon"><i class="fa-solid fa-moon"></i></div>
+                    <div class="prayer-info">
+                        <h4>Isya</h4>
+                        <span class="time" id="time-isha">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Script -->
+    <script src="app.js"></script>
+</body>
+</html>
