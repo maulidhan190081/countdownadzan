@@ -250,6 +250,13 @@ body {
     opacity: 0.7;
 }
 
+.status-verified-icon {
+    color: #10b981;
+    margin-left: 6px;
+    font-size: 1rem;
+    filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.4));
+}
+
 /* Schedule Section */
 .schedule-section {
     display: flex;
