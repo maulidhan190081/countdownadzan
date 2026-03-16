@@ -94,7 +94,7 @@ async function fetchPrayerTimes(lat, lng) {
             timings = data.data.timings;
             updateScheduleUI();
             startCountdown();
-            elements.statusMessage.innerText = "Jadwal adzan termutakhirkan";
+            elements.statusMessage.innerHTML = 'Jadwal adzan termutakhirkan <i class="fa-solid fa-circle-check status-verified-icon"></i>';
         } else {
             throw new Error("API returned non-200");
         }
