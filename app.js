@@ -6,7 +6,9 @@ const elements = {
     nextPrayerTimeVal: document.getElementById('next-prayer-time-val'),
     progressCircle: document.getElementById('progress-circle'),
     statusMessage: document.getElementById('status-message'),
-    prayerCards: document.querySelectorAll('.prayer-card')
+    prayerCards: document.querySelectorAll('.prayer-card'),
+    themeToggle: document.getElementById('theme-toggle'),
+    audio: document.getElementById('final-countdown-audio')
 };
 
 const PRAYER_NAMES = {
@@ -22,6 +24,7 @@ const REQUIRED_PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 let timings = {};
 let countdownInterval;
 let nextPrayerObj = null;
+let isManualSelection = false;
 
 // Circle logic
 const circleRadius = 140; // match CSS
@@ -165,10 +168,22 @@ function getPreviousPrayerDate(nextKey, isTomorrow) {
     return parsePrayerTimeToDate(cleanTime, addDays);
 }
 
-function startCountdown() {
-    if (countdownInterval) clearInterval(countdownInterval);
+function startCountdown(manualNextPrayer = null) {
+    if (countdownInterval) cancelAnimationFrame(countdownInterval);
     
-    nextPrayerObj = findNextPrayer();
+    // Reset music if it was playing
+    if (elements.audio) {
+        elements.audio.pause();
+        elements.audio.currentTime = 0;
+    }
+
+    if (manualNextPrayer) {
+        nextPrayerObj = manualNextPrayer;
+        isManualSelection = true;
+    } else if (!isManualSelection) {
+        nextPrayerObj = findNextPrayer();
+    }
+
     if(!nextPrayerObj) return;
 
     elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key];
@@ -180,19 +195,27 @@ function startCountdown() {
     if(activeCard) activeCard.classList.add('active');
 
     const updateTimer = () => {
-        const now = new Date();
-        const diff = nextPrayerObj.date.getTime() - now.getTime();
+        // Use performance.now() to get microsecond precision for the most fluid UI update
+        // We calculate elapsed since the reference timer start Date
+        const currentMsDate = new Date().getTime();
+        const diff = nextPrayerObj.date.getTime() - currentMsDate;
         
         if (diff <= 0) {
             // Time reached!
-            clearInterval(countdownInterval);
+            cancelAnimationFrame(countdownInterval);
             elements.timerDisplay.innerText = "Waktunya Adzan!";
             setProgress(100);
             
-            // Wait 1 minute, then start looking for the next prayer
+            // Play final countdown audio
+            if (elements.audio) {
+                elements.audio.play().catch(e => console.warn("Browser maybe blocked autoplay:", e));
+            }
+            
+            // Wait 25 seconds for the song intro to rock out, then start looking for the next prayer
             setTimeout(() => {
+                isManualSelection = false; // reset back to auto after reaching time
                 startCountdown();
-            }, 60000);
+            }, 25000);
             return;
         }
         
@@ -213,20 +236,89 @@ function startCountdown() {
             elements.timerDisplay.innerText = `${h}:${m}:${s}`;
         }
 
-        // Calculate progress percentage
-        const prevPrayerDate = getPreviousPrayerDate(nextPrayerObj.key, nextPrayerObj.isTomorrow);
-        const totalDuration = nextPrayerObj.date.getTime() - prevPrayerDate.getTime();
-        const elapsedTime = now.getTime() - prevPrayerDate.getTime();
+        // Calculate progress percentage with exact decimal differences
+        let percentage = 0;
         
-        let percentage = (elapsedTime / totalDuration) * 100;
-        // Clamp between 0 and 100 just in case
+        // Find the actual real-world chronological previous prayer.
+        // This ensures the progress bar scales beautifully from the last real prayer,
+        // rather than starting at an empty 0% when manually clicked.
+        const actualNext = findNextPrayer();
+        if (actualNext) {
+            const actualPrevDate = getPreviousPrayerDate(actualNext.key, actualNext.isTomorrow);
+            
+            const totalDuration = nextPrayerObj.date.getTime() - actualPrevDate.getTime();
+            const elapsedTime = Date.now() - actualPrevDate.getTime();
+            
+            if (totalDuration > 0) {
+                percentage = (elapsedTime / totalDuration) * 100;
+            }
+        }
+
+        // Clamp between 0 and 100 to ensure circle never breaks
         percentage = Math.max(0, Math.min(100, percentage));
         
         setProgress(percentage);
+        countdownInterval = requestAnimationFrame(updateTimer);
     };
 
-    updateTimer(); // Initial call
-    countdownInterval = setInterval(updateTimer, 1000);
+    countdownInterval = requestAnimationFrame(updateTimer);
 }
 
-document.addEventListener('DOMContentLoaded', init);
+function setupManualSelection() {
+    elements.prayerCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const prayerKey = card.getAttribute('data-prayer');
+            if (timings[prayerKey]) {
+                const cleanTime = timings[prayerKey].split(' ')[0];
+                const prayerDate = parsePrayerTimeToDate(cleanTime);
+                
+                // If the selected prayer is already passed for today, assume it's for tomorrow
+                // to prevent the countdown from instantly saying "Waktunya Adzan!"
+                let isTomorrow = false;
+                if (prayerDate.getTime() <= new Date().getTime()) {
+                    prayerDate.setDate(prayerDate.getDate() + 1);
+                    isTomorrow = true;
+                }
+
+                const manualObj = {
+                    key: prayerKey,
+                    time: cleanTime,
+                    date: prayerDate,
+                    isTomorrow: isTomorrow
+                };
+                
+                startCountdown(manualObj);
+            }
+        });
+        card.style.cursor = 'pointer'; // Make it look clickable
+    });
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const isLightMode = savedTheme === 'light';
+    
+    if (isLightMode) {
+        document.body.classList.add('light-mode');
+        elements.themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    }
+
+    elements.themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const isNowLight = document.body.classList.contains('light-mode');
+        
+        if (isNowLight) {
+            localStorage.setItem('theme', 'light');
+            elements.themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i>';
+        } else {
+            localStorage.setItem('theme', 'dark');
+            elements.themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    setupManualSelection();
+    initTheme();
+});

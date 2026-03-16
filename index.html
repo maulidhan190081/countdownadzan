@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waktu Adzan & Hitung Mundur</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=1">
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +17,9 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- Banner Image Overlay at the top -->
+        <div class="header-banner"></div>
+        
         <!-- Header / Location Info -->
         <header class="header">
             <div class="location-badge">
@@ -24,6 +29,9 @@
             <div class="date-info" id="date-text">
                 --/--/----
             </div>
+            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+                <i class="fa-solid fa-sun"></i>
+            </button>
         </header>
 
         <!-- Main Countdown Section -->
@@ -89,5 +97,8 @@
 
     <!-- Script -->
     <script src="app.js"></script>
+
+    <!-- Audio Element -->
+    <audio id="final-countdown-audio" src="final_countdown.mp3"></audio>
 </body>
 </html>
