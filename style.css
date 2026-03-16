@@ -8,8 +8,32 @@
     --text-secondary: #94a3b8;
     --font-main: 'Outfit', sans-serif;
     
+    
     --active-bg: rgba(0, 240, 255, 0.1);
     --active-border: rgba(0, 240, 255, 0.4);
+    --bg-gradient-1: rgba(0, 240, 255, 0.05);
+    --bg-gradient-2: rgba(147, 51, 234, 0.05);
+    
+    --header-text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+    --header-badge-bg: rgba(0, 0, 0, 0.3);
+}
+
+body.light-mode {
+    --bg-color: #f0f4f8;
+    --card-bg: rgba(255, 255, 255, 0.8);
+    --card-border: rgba(0, 0, 0, 0.05);
+    --accent-color: #0ea5e9;
+    --accent-glow: rgba(14, 165, 233, 0.4);
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    
+    --active-bg: rgba(14, 165, 233, 0.1);
+    --active-border: rgba(14, 165, 233, 0.4);
+    --bg-gradient-1: rgba(14, 165, 233, 0.05);
+    --bg-gradient-2: rgba(14, 165, 233, 0.05);
+    
+    --header-text-shadow: 0 1px 4px rgba(255, 255, 255, 0.9), 0 0 15px rgba(255, 255, 255, 0.7);
+    --header-badge-bg: rgba(255, 255, 255, 0.5);
 }
 
 * {
@@ -27,8 +51,8 @@ body {
     justify-content: center;
     align-items: center;
     background-image: 
-        radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(147, 51, 234, 0.05), transparent 25%);
+        radial-gradient(circle at 15% 50%, var(--bg-gradient-1), transparent 25%),
+        radial-gradient(circle at 85% 30%, var(--bg-gradient-2), transparent 25%);
     background-attachment: fixed;
     padding: 20px;
 }
@@ -36,13 +60,13 @@ body {
 .app-container {
     width: 100%;
     max-width: 480px;
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--card-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--card-border);
     border-radius: 30px;
     padding: 30px 25px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
     gap: 30px;
@@ -59,26 +83,52 @@ body {
     right: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    z-index: 2;
 }
 
-/* Header */
+/* Header Banner Art */
+.header-banner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 160px;
+    background-image: url('header_bg.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 30px 30px 0 0;
+    /* Softly blend the bottom edge into the dark card */
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+    opacity: 0.6;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Base state for icons so they stand out */
 .header {
+    position: relative;
+    z-index: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .location-badge {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--header-badge-bg);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     padding: 8px 16px;
     border-radius: 20px;
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--text-primary); /* Changed to primary so it doesn't fade into the BG */
+    font-weight: 500;
     border: 1px solid var(--card-border);
     transition: all 0.3s ease;
+    text-shadow: var(--header-text-shadow);
 }
 
 .location-badge i {
@@ -86,17 +136,42 @@ body {
 }
 
 .date-info {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    font-weight: 500;
+    font-size: 0.95rem; /* slightly larger for readability */
+    color: var(--text-primary); /* changed to primary */
+    font-weight: 600;
+    text-shadow: var(--header-text-shadow);
+}
+
+.theme-toggle-btn {
+    background: var(--header-badge-bg);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    text-shadow: var(--header-text-shadow);
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(128, 128, 128, 0.2);
+    color: var(--accent-color);
 }
 
 /* Countdown Section */
 .countdown-section {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
 }
 
 .countdown-circle {
@@ -119,7 +194,7 @@ body {
 .countdown-circle svg circle {
     fill: none;
     stroke-width: 8;
-    stroke: rgba(255, 255, 255, 0.05);
+    stroke: var(--card-border);
     stroke-linecap: round;
 }
 
@@ -127,7 +202,7 @@ body {
     stroke: var(--accent-color);
     stroke-dasharray: 880; /* 2 * pi * r (r=140 approx 879.6) */
     stroke-dashoffset: 0;
-    transition: stroke-dashoffset 1s linear;
+    transition: stroke-dashoffset 0.1s linear;
     filter: drop-shadow(0 0 8px var(--accent-glow));
 }
 
@@ -141,7 +216,8 @@ body {
 #next-prayer-name {
     font-size: 1.5rem;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    text-shadow: var(--header-text-shadow);
     text-transform: uppercase;
     letter-spacing: 2px;
     margin-bottom: 5px;
@@ -169,8 +245,9 @@ body {
 
 .status-message {
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-secondary);
     text-align: center;
+    opacity: 0.7;
 }
 
 /* Schedule Section */
@@ -227,7 +304,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(128, 128, 128, 0.05);
     border-radius: 12px;
     margin-right: 15px;
 }
