@@ -177,6 +177,8 @@ function startCountdown(manualNextPrayer = null) {
         elements.audio.currentTime = 0;
     }
 
+    elements.timerDisplay.classList.remove('time-up-text');
+
     if (manualNextPrayer) {
         nextPrayerObj = manualNextPrayer;
         isManualSelection = true;
@@ -203,7 +205,8 @@ function startCountdown(manualNextPrayer = null) {
         if (diff <= 0) {
             // Time reached!
             cancelAnimationFrame(countdownInterval);
-            elements.timerDisplay.innerText = "Waktunya Adzan!";
+            elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!";
+            elements.timerDisplay.classList.add('time-up-text');
             setProgress(100);
             
             // Play final countdown audio

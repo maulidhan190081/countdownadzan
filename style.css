@@ -234,6 +234,12 @@ body {
     margin-bottom: 10px;
 }
 
+.timer-display.time-up-text {
+    font-size: clamp(2rem, 8vw, 2.5rem);
+    text-align: center;
+    line-height: 1.1;
+}
+
 .next-prayer-time {
     font-size: 1rem;
     color: var(--text-secondary);
