@@ -235,9 +235,9 @@ body {
 }
 
 .timer-display.time-up-text {
-    font-size: clamp(2rem, 8vw, 2.5rem);
+    font-size: clamp(1.8rem, 6vw, 2.2rem) !important;
     text-align: center;
-    line-height: 1.1;
+    line-height: 1.2 !important;
 }
 
 .next-prayer-time {
