@@ -53,7 +53,8 @@ async function init() {
                 elements.statusMessage.innerText = "Akses lokasi ditolak, menggunakan fallback.";
                 // Fallback to Jakarta
                 fetchPrayerTimes("-6.2088", "106.8456");
-            }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     } else {
         elements.locationText.innerText = "Lokasi: Jakarta (Default)";
@@ -69,12 +70,14 @@ function setDateInfo() {
 
 async function fetchLocationName(lat, lng) {
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await res.json();
         
-        // Try getting city, town, or state
-        const city = data.address.city || data.address.town || data.address.village || data.address.county || data.address.state || "Lokasi Ditemukan";
-        elements.locationText.innerText = city;
+        const area = data.address.suburb || data.address.village || "";
+        const city = data.address.city || data.address.town || data.address.county || "";
+        const locationName = [area, city].filter(Boolean).join(", ") || data.address.state || "Lokasi Ditemukan";
+        
+        elements.locationText.innerText = locationName;
     } catch (e) {
         console.error("Failed to fetch location name", e);
         elements.locationText.innerText = "Lokasi Ditemukan";
@@ -84,10 +87,9 @@ async function fetchLocationName(lat, lng) {
 async function fetchPrayerTimes(lat, lng) {
     try {
         // Method 11 is Majlis Ugama Islam Singapura, Method 20 is Kemenag.
-        // If left empty, API defaults intelligently. Let's use standard default to be safe broadly, or 20 for Indonesia. 
-        // We will omit method to use the API's auto detection based on location.
+        // We use method 20 specifically for Kemenag RI (Indonesia) for accurate times. 
         const dateStr = new Date().toISOString().split('T')[0].split('-').reverse().join('-');
-        const response = await fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}`);
+        const response = await fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`);
         const data = await response.json();
 
         if (data.code === 200) {
@@ -177,6 +179,8 @@ function startCountdown(manualNextPrayer = null) {
         elements.audio.currentTime = 0;
     }
 
+    elements.timerDisplay.classList.remove('time-up-text');
+
     if (manualNextPrayer) {
         nextPrayerObj = manualNextPrayer;
         isManualSelection = true;
@@ -203,7 +207,8 @@ function startCountdown(manualNextPrayer = null) {
         if (diff <= 0) {
             // Time reached!
             cancelAnimationFrame(countdownInterval);
-            elements.timerDisplay.innerText = "Waktunya Adzan!";
+            elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!";
+            elements.timerDisplay.classList.add('time-up-text');
             setProgress(100);
             
             // Play final countdown audio
@@ -321,4 +326,11 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
     setupManualSelection();
     initTheme();
+
+    const testBtn = document.getElementById('test-adzan-btn');
+    if (testBtn) {
+        testBtn.addEventListener('click', () => {
+            if (nextPrayerObj) nextPrayerObj.date = new Date();
+        });
+    }
 });

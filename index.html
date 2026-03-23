@@ -29,9 +29,14 @@
             <div class="date-info" id="date-text">
                 --/--/----
             </div>
-            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
-                <i class="fa-solid fa-sun"></i>
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button id="test-adzan-btn" class="theme-toggle-btn" aria-label="Test Adzan" title="Tes Suara & Animasi">
+                    <i class="fa-solid fa-bolt"></i>
+                </button>
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-sun"></i>
+                </button>
+            </div>
         </header>
 
         <!-- Main Countdown Section -->
@@ -95,10 +100,10 @@
         </section>
     </div>
 
+    <!-- Audio Element -->
+    <audio id="final-countdown-audio" src="marimba_soft.mp3"></audio>
+
     <!-- Script -->
     <script src="app.js"></script>
-
-    <!-- Audio Element -->
-    <audio id="final-countdown-audio" src="final_countdown.mp3"></audio>
 </body>
 </html>
