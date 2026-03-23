@@ -1,0 +1,21 @@
+{
+  "name": "Waktu Adzan & Hitung Mundur",
+  "short_name": "Adzan App",
+  "description": "Aplikasi hitung mundur shalat dengan antarmuka elegan.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#00f0ff",
+  "icons": [
+    {
+      "src": "assets/gambar/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/gambar/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

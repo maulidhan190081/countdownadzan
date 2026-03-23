@@ -1,6 +1,7 @@
 const elements = {
     locationText: document.getElementById('location-text'),
-    dateText: document.getElementById('date-text'),
+    gregorianDate: document.getElementById('gregorian-date'),
+    hijriDate: document.getElementById('hijri-date'),
     nextPrayerName: document.getElementById('next-prayer-name'),
     timerDisplay: document.getElementById('time-remaining'),
     nextPrayerTimeVal: document.getElementById('next-prayer-time-val'),
@@ -8,8 +9,22 @@ const elements = {
     statusMessage: document.getElementById('status-message'),
     prayerCards: document.querySelectorAll('.prayer-card'),
     themeToggle: document.getElementById('theme-toggle'),
-    audio: document.getElementById('final-countdown-audio')
+    audio: document.getElementById('final-countdown-audio'),
+    sunriseTime: document.getElementById('time-sunrise'),
+    qiblaDir: document.getElementById('qibla-direction'),
+    
+    // Compass Elements
+    homeView: document.getElementById('home-view'),
+    compassView: document.getElementById('compass-view'),
+    qiblaCard: document.getElementById('qibla-card'),
+    backToHomeBtn: document.getElementById('back-to-home-btn'),
+    compassCircle: document.getElementById('compass-circle'),
+    qiblaArrow: document.getElementById('qibla-arrow'),
+    qiblaDegreeDisplay: document.getElementById('qibla-degree-display'),
+    compassSensorStatus: document.getElementById('compass-sensor-status')
 };
+
+let currentQiblaDegree = 0;
 
 const PRAYER_NAMES = {
     Fajr: "Subuh",
@@ -39,6 +54,35 @@ function setProgress(percent) {
 
 async function init() {
     setDateInfo();
+    restoreCache();
+    
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW failed:', e));
+    }
+    
+    startGPS();
+}
+
+function restoreCache() {
+    const cachedTimings = localStorage.getItem('cachedTimings');
+    const cachedData = localStorage.getItem('cachedIslamicData');
+    const cachedLoc = localStorage.getItem('cachedLocationName');
+    
+    if(cachedTimings && cachedData && cachedLoc) {
+        elements.locationText.innerText = cachedLoc;
+        timings = JSON.parse(cachedTimings);
+        const islamicData = JSON.parse(cachedData);
+        updateIslamicInfo(islamicData, localStorage.getItem('cachedLat'), localStorage.getItem('cachedLng'));
+        updateScheduleUI();
+        startCountdown();
+        elements.statusMessage.innerText = "Menyelaraskan detik ke satelit...";
+    }
+}
+
+function startGPS() {
+    if(!localStorage.getItem('cachedLocationName')) {
+        elements.locationText.innerText = "Mencari lokasi...";
+    }
     
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -49,15 +93,14 @@ async function init() {
             },
             error => {
                 console.warn("Geolocation denied or error", error);
-                elements.locationText.innerText = "Lokasi: Jakarta (Default)";
+                elements.locationText.innerText = "Jakarta (Default)";
                 elements.statusMessage.innerText = "Akses lokasi ditolak, menggunakan fallback.";
-                // Fallback to Jakarta
                 fetchPrayerTimes("-6.2088", "106.8456");
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     } else {
-        elements.locationText.innerText = "Lokasi: Jakarta (Default)";
+        elements.locationText.innerText = "Jakarta (Default)";
         elements.statusMessage.innerText = "Browser tidak mendukung geolokasi.";
         fetchPrayerTimes("-6.2088", "106.8456");
     }
@@ -65,38 +108,76 @@ async function init() {
 
 function setDateInfo() {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    elements.dateText.innerText = new Date().toLocaleDateString('id-ID', options);
+    if (elements.gregorianDate) {
+        elements.gregorianDate.innerText = new Date().toLocaleDateString('id-ID', options);
+    }
+}
+
+function updateIslamicInfo(data, lat, lng) {
+    if(data.date && data.date.hijri) {
+        const hijri = data.date.hijri;
+        if(elements.hijriDate) elements.hijriDate.innerText = `${hijri.day} ${hijri.month.en} ${hijri.year} H`;
+    }
+    if(data.timings) {
+        if(elements.sunriseTime) elements.sunriseTime.innerText = data.timings.Sunrise.split(' ')[0];
+    }
+    
+    if(elements.qiblaDir) {
+        const cachedQibla = localStorage.getItem('cachedQiblaDegree');
+        if(cachedQibla) {
+            currentQiblaDegree = parseFloat(cachedQibla);
+            const degText = currentQiblaDegree.toFixed(1) + "°";
+            elements.qiblaDir.innerText = degText;
+            if(elements.qiblaDegreeDisplay) elements.qiblaDegreeDisplay.innerText = degText;
+            if(elements.qiblaArrow) elements.qiblaArrow.style.transform = `translate(-50%, -50%) rotate(${currentQiblaDegree}deg)`;
+        }
+        
+        fetch(`https://api.aladhan.com/v1/qibla/${lat}/${lng}`)
+            .then(res => res.json())
+            .then(qdata => {
+                if(qdata.code === 200) {
+                    currentQiblaDegree = qdata.data.direction;
+                    localStorage.setItem('cachedQiblaDegree', currentQiblaDegree);
+                    const degText = currentQiblaDegree.toFixed(1) + "°";
+                    elements.qiblaDir.innerText = degText;
+                    if(elements.qiblaDegreeDisplay) elements.qiblaDegreeDisplay.innerText = degText;
+                    if(elements.qiblaArrow) elements.qiblaArrow.style.transform = `translate(-50%, -50%) rotate(${currentQiblaDegree}deg)`;
+                }
+            }).catch(e => console.warn(e));
+    }
 }
 
 async function fetchLocationName(lat, lng) {
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await res.json();
-        
-        const area = data.address.suburb || data.address.village || "";
-        const city = data.address.city || data.address.town || data.address.county || "";
-        const locationName = [area, city].filter(Boolean).join(", ") || data.address.state || "Lokasi Ditemukan";
-        
-        elements.locationText.innerText = locationName;
-    } catch (e) {
+        let city = data.address.city || data.address.town || data.address.village || data.address.county || "Lokasi Anda";
+        elements.locationText.innerText = city;
+        localStorage.setItem('cachedLocationName', city);
+    } catch(e) {
         console.error("Failed to fetch location name", e);
-        elements.locationText.innerText = "Lokasi Ditemukan";
+        if(!localStorage.getItem('cachedLocationName')) elements.locationText.innerText = "Satelit GPS";
     }
 }
 
 async function fetchPrayerTimes(lat, lng) {
     try {
-        // Method 11 is Majlis Ugama Islam Singapura, Method 20 is Kemenag.
-        // We use method 20 specifically for Kemenag RI (Indonesia) for accurate times. 
-        const dateStr = new Date().toISOString().split('T')[0].split('-').reverse().join('-');
-        const response = await fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=20`);
-        const data = await response.json();
-
+        const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=20`);
+        const data = await res.json();
+        
         if (data.code === 200) {
             timings = data.data.timings;
+            // Menyimpan memori jadwal untuk muat ulang instan berikutnya
+            localStorage.setItem('cachedTimings', JSON.stringify(timings));
+            localStorage.setItem('cachedIslamicData', JSON.stringify(data.data));
+            localStorage.setItem('cachedLat', lat);
+            localStorage.setItem('cachedLng', lng);
+            
+            updateIslamicInfo(data.data, lat, lng);
             updateScheduleUI();
             startCountdown();
-            elements.statusMessage.innerHTML = 'Jadwal adzan termutakhirkan <i class="fa-solid fa-circle-check status-verified-icon"></i>';
+            const verifiedBadgeSVG = '<img src="assets/gambar/verified.png" alt="Verified" style="width: 18px; height: 18px; vertical-align: text-bottom; margin-left: 4px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">';
+            elements.statusMessage.innerHTML = `Jadwal adzan termutakhirkan ${verifiedBadgeSVG}`;
         } else {
             throw new Error("API returned non-200");
         }
@@ -190,7 +271,7 @@ function startCountdown(manualNextPrayer = null) {
 
     if(!nextPrayerObj) return;
 
-    elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key];
+    elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key].toUpperCase();
     elements.nextPrayerTimeVal.innerText = nextPrayerObj.time;
     
     // Highlight active card
@@ -216,14 +297,14 @@ function startCountdown(manualNextPrayer = null) {
                 elements.audio.play().catch(e => console.warn("Browser maybe blocked autoplay:", e));
             }
             
-            elements.timerDisplay.innerHTML = "WAKTUNYA!";
+            elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!";
             elements.timerDisplay.classList.add('time-up-text');
             
             const contentDiv = document.querySelector('.countdown-content');
             contentDiv.classList.add('is-adzan');
-            elements.nextPrayerName.innerText = "ADZAN " + PRAYER_NAMES[nextPrayerObj.key].toUpperCase();
+            elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key].toUpperCase();
             
-            document.querySelector('.next-prayer-time').style.display = 'none';
+            document.querySelector('.next-prayer-time').style.display = 'block';
             
             let dismissText = document.getElementById('dismiss-text');
             if (!dismissText) {
@@ -363,4 +444,85 @@ document.addEventListener('DOMContentLoaded', () => {
             if (nextPrayerObj) nextPrayerObj.date = new Date();
         });
     }
+    
+    // Compass View Navigation
+    if (elements.qiblaCard) {
+        elements.qiblaCard.addEventListener('click', () => {
+            if(elements.homeView) elements.homeView.style.display = 'none';
+            if(elements.compassView) {
+                elements.compassView.style.display = 'flex';
+                elements.compassView.classList.remove('fade-in');
+                void elements.compassView.offsetWidth; 
+                elements.compassView.classList.add('fade-in');
+            }
+            startCompassSensor();
+        });
+    }
+    
+    if (elements.backToHomeBtn) {
+        elements.backToHomeBtn.addEventListener('click', () => {
+            if(elements.compassView) elements.compassView.style.display = 'none';
+            if(elements.homeView) {
+                elements.homeView.style.display = 'block';
+                elements.homeView.classList.remove('fade-in');
+                void elements.homeView.offsetWidth; 
+                elements.homeView.classList.add('fade-in');
+            }
+            stopCompassSensor();
+        });
+    }
 });
+
+// Device Orientation Handling for Compass
+function handleOrientation(event) {
+    let heading = null;
+    if (event.webkitCompassHeading) {
+        heading = event.webkitCompassHeading; // iOS 
+    } else if (event.absolute && event.alpha != null) {
+        heading = 360 - event.alpha; // Android Absolute
+    }
+
+    if (heading != null) {
+        elements.compassSensorStatus.innerText = "Satelit Sensor Kompas Aktif \u2713";
+        elements.compassSensorStatus.style.color = "#10b981";
+        // Rotate outer compass to point physical North
+        elements.compassCircle.style.transform = `rotate(${-heading}deg)`;
+    } else {
+        elements.compassSensorStatus.innerText = "Ponsel Anda menyediakan data sensor, tetapi tidak ada fitur kompas magnetik (Kalkulasi statis).";
+        elements.compassSensorStatus.style.color = "#f59e0b";
+    }
+}
+
+function startCompassSensor() {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ devices require explicit user permission gesture
+        elements.compassSensorStatus.innerText = "Ketuk tulisan merah ini untuk memberi izin Sensor iOS.";
+        elements.compassSensorStatus.style.color = "#ef4444";
+        elements.compassSensorStatus.onclick = () => {
+            DeviceOrientationEvent.requestPermission()
+                .then(permissionState => {
+                    if (permissionState === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation, true);
+                        elements.compassSensorStatus.onclick = null;
+                    } else {
+                        elements.compassSensorStatus.innerText = "Izin sensor ditolak.";
+                    }
+                })
+                .catch(console.error);
+        };
+    } else if (window.DeviceOrientationEvent) {
+        // Non iOS 13+ devices
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        elements.compassSensorStatus.innerText = "Membaca kompas magnetik ponsel Anda...";
+    } else {
+        elements.compassSensorStatus.innerText = "Browser perangkat/PC Anda tidak memiliki sensor giroskop kompas.";
+    }
+}
+
+function stopCompassSensor() {
+    window.removeEventListener('deviceorientation', handleOrientation, true);
+    window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+    // Reset compass physical rotation gently
+    if(elements.compassCircle) elements.compassCircle.style.transform = `rotate(0deg)`;
+}
