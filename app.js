@@ -216,11 +216,19 @@ function startCountdown(manualNextPrayer = null) {
                 elements.audio.play().catch(e => console.warn("Browser maybe blocked autoplay:", e));
             }
             
-            // Wait 25 seconds for the song intro to rock out, then start looking for the next prayer
+            elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!<br><span style='font-size: 0.35em; font-weight: 400; opacity: 0.8; display: block; margin-top: 8px; text-shadow: none;'>Ketuk untuk mematikan</span>";
+            
+            // Wait for user to click anywhere to stop the audio
+            const stopAlarm = () => {
+                document.removeEventListener('click', stopAlarm);
+                isManualSelection = false;
+                startCountdown(); // This automatically pauses audio and resets UI
+            };
+            
+            // Small delay to prevent immediate trigger if user just clicked a button
             setTimeout(() => {
-                isManualSelection = false; // reset back to auto after reaching time
-                startCountdown();
-            }, 25000);
+                document.addEventListener('click', stopAlarm);
+            }, 500);
             return;
         }
         
