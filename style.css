@@ -234,18 +234,49 @@ body {
     margin-bottom: 10px;
 }
 
-@keyframes popAndGlow {
-    0%, 100% { transform: scale(1); text-shadow: 0 0 15px var(--accent-glow); color: var(--accent-color); }
-    50% { transform: scale(1.12); text-shadow: 0 0 30px var(--accent-color), 0 0 25px var(--accent-color); color: var(--text-primary); }
+@keyframes popAndGlowWhole {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+@keyframes glowText {
+    0%, 100% { text-shadow: 0 0 15px var(--accent-glow); color: var(--accent-color); }
+    50% { text-shadow: 0 0 30px var(--accent-color), 0 0 25px var(--accent-color); color: var(--text-primary); }
 }
 
-.timer-display.time-up-text {
-    font-size: 2.2rem !important;
+.countdown-content.is-adzan {
+    animation: popAndGlowWhole 1.5s infinite ease-in-out;
+    gap: 4px;
+}
+
+.countdown-content.is-adzan #next-prayer-name {
+    font-size: 1.6rem;
+    color: var(--accent-color);
+    text-shadow: 0 0 10px var(--accent-glow);
+    margin-bottom: 0px;
+}
+
+.countdown-content.is-adzan .timer-display {
+    font-size: 2.8rem !important;
     text-align: center;
     line-height: 1.2 !important;
-    width: 250px;
-    margin: 5px auto;
-    animation: popAndGlow 1.5s infinite ease-in-out;
+    animation: glowText 1.5s infinite ease-in-out;
+    margin: 0;
+    width: 100%;
+}
+
+.dismiss-text {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--active-bg);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--active-border);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.9;
 }
 
 .next-prayer-time {
