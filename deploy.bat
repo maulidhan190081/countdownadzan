@@ -12,11 +12,11 @@ git add .
 set /p pesan="Tulis pesan update (Lalu tekan Enter): "
 if "%pesan%"=="" set pesan="Update fitur dan tampilan terbaru"
 
-:: 3. Melakukan komit dan push ke master
+:: 3. Melakukan komit dan push ke main
 echo.
 echo [1/2] Menyimpan dan mengirim source code ke GitHub Utama...
 git commit -m "%pesan%"
-git push origin master
+git push origin main
 
 :: 4. Melakukan deploy ke gh-pages
 echo.
