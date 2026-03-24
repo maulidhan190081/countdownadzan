@@ -41,6 +41,102 @@ let countdownInterval;
 let nextPrayerObj = null;
 let isManualSelection = false;
 
+let backgroundTimerWorker = null;
+let isAdzanTriggered = false;
+
+function initBackgroundTimer() {
+    const workerBlob = new Blob([`
+        let interval;
+        self.onmessage = function(e) {
+            if (e.data.action === 'START') {
+                clearInterval(interval);
+                const targetTime = e.data.targetTime;
+                interval = setInterval(() => {
+                    if (Date.now() >= targetTime) {
+                        clearInterval(interval);
+                        self.postMessage({ action: 'TIME_UP' });
+                    }
+                }, 1000);
+            } else if (e.data.action === 'STOP') {
+                clearInterval(interval);
+            }
+        };
+    `], { type: 'application/javascript' });
+    
+    backgroundTimerWorker = new Worker(URL.createObjectURL(workerBlob));
+    
+    backgroundTimerWorker.onmessage = function(e) {
+        if (e.data.action === 'TIME_UP') triggerAdzanAlarm();
+    };
+}
+
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+    }
+}
+
+function triggerAdzanAlarm() {
+    if (isAdzanTriggered || !nextPrayerObj) return;
+    isAdzanTriggered = true;
+    
+    cancelAnimationFrame(countdownInterval);
+    if (backgroundTimerWorker) {
+        backgroundTimerWorker.postMessage({ action: 'STOP' });
+    }
+    
+    elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!";
+    elements.timerDisplay.classList.add('time-up-text');
+    setProgress(100);
+    
+    if (elements.audio) {
+        elements.audio.play().catch(e => console.warn("Browser maybe blocked autoplay:", e));
+    }
+    
+    const contentDiv = document.querySelector('.countdown-content');
+    contentDiv.classList.add('is-adzan');
+    elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key].toUpperCase();
+    
+    document.querySelector('.next-prayer-time').style.display = 'block';
+    
+    let dismissText = document.getElementById('dismiss-text');
+    if (!dismissText) {
+        dismissText = document.createElement('div');
+        dismissText.id = 'dismiss-text';
+        dismissText.className = 'dismiss-text';
+        dismissText.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> Ketuk mematikan';
+        contentDiv.appendChild(dismissText);
+    }
+    dismissText.style.display = 'flex';
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(`Waktunya Adzan ${PRAYER_NAMES[nextPrayerObj.key]}`, {
+                body: 'Klik untuk membuka aplikasi dan mendengarkan Adzan.',
+                icon: 'assets/gambar/favicon.png',
+                vibrate: [200, 100, 200, 100, 200, 100, 200],
+                tag: 'adzan-notification',
+                requireInteraction: true
+            });
+        });
+    }
+
+    const stopAlarm = () => {
+        document.removeEventListener('click', stopAlarm);
+        isManualSelection = false;
+        
+        contentDiv.classList.remove('is-adzan');
+        document.querySelector('.next-prayer-time').style.display = 'block';
+        if (dismissText) dismissText.style.display = 'none';
+        
+        startCountdown(); // This automatically pauses audio and resets UI
+    };
+    
+    setTimeout(() => {
+        document.addEventListener('click', stopAlarm);
+    }, 500);
+}
+
 // Circle logic
 const circleRadius = 140; // match CSS
 const circleCircumference = 2 * Math.PI * circleRadius;
@@ -58,6 +154,12 @@ async function init() {
     
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW failed:', e));
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data.action === 'PLAY_AUDIO' && elements.audio) {
+                elements.audio.currentTime = 0;
+                elements.audio.play().catch(e => console.warn(e));
+            }
+        });
     }
     
     startGPS();
@@ -253,6 +355,8 @@ function getPreviousPrayerDate(nextKey, isTomorrow) {
 
 function startCountdown(manualNextPrayer = null) {
     if (countdownInterval) cancelAnimationFrame(countdownInterval);
+    isAdzanTriggered = false;
+    if (!backgroundTimerWorker) initBackgroundTimer();
     
     // Reset music if it was playing
     if (elements.audio) {
@@ -271,6 +375,10 @@ function startCountdown(manualNextPrayer = null) {
 
     if(!nextPrayerObj) return;
 
+    if (backgroundTimerWorker) {
+        backgroundTimerWorker.postMessage({ action: 'START', targetTime: nextPrayerObj.date.getTime() });
+    }
+
     elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key].toUpperCase();
     elements.nextPrayerTimeVal.innerText = nextPrayerObj.time;
     
@@ -286,52 +394,7 @@ function startCountdown(manualNextPrayer = null) {
         const diff = nextPrayerObj.date.getTime() - currentMsDate;
         
         if (diff <= 0) {
-            // Time reached!
-            cancelAnimationFrame(countdownInterval);
-            elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!";
-            elements.timerDisplay.classList.add('time-up-text');
-            setProgress(100);
-            
-            // Play final countdown audio
-            if (elements.audio) {
-                elements.audio.play().catch(e => console.warn("Browser maybe blocked autoplay:", e));
-            }
-            
-            elements.timerDisplay.innerHTML = "Waktunya<br>Adzan!";
-            elements.timerDisplay.classList.add('time-up-text');
-            
-            const contentDiv = document.querySelector('.countdown-content');
-            contentDiv.classList.add('is-adzan');
-            elements.nextPrayerName.innerText = PRAYER_NAMES[nextPrayerObj.key].toUpperCase();
-            
-            document.querySelector('.next-prayer-time').style.display = 'block';
-            
-            let dismissText = document.getElementById('dismiss-text');
-            if (!dismissText) {
-                dismissText = document.createElement('div');
-                dismissText.id = 'dismiss-text';
-                dismissText.className = 'dismiss-text';
-                dismissText.innerHTML = '<i class="fa-solid fa-hand-pointer"></i> Ketuk mematikan';
-                contentDiv.appendChild(dismissText);
-            }
-            dismissText.style.display = 'flex';
-            
-            // Wait for user to click anywhere to stop the audio
-            const stopAlarm = () => {
-                document.removeEventListener('click', stopAlarm);
-                isManualSelection = false;
-                
-                contentDiv.classList.remove('is-adzan');
-                document.querySelector('.next-prayer-time').style.display = 'block';
-                if (dismissText) dismissText.style.display = 'none';
-                
-                startCountdown(); // This automatically pauses audio and resets UI
-            };
-            
-            // Small delay to prevent immediate trigger if user just clicked a button
-            setTimeout(() => {
-                document.addEventListener('click', stopAlarm);
-            }, 500);
+            triggerAdzanAlarm();
             return;
         }
         
@@ -437,6 +500,9 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
     setupManualSelection();
     initTheme();
+
+    // Ask for notification permission on first interaction
+    document.addEventListener('click', requestNotificationPermission, { once: true });
 
     const testBtn = document.getElementById('test-adzan-btn');
     if (testBtn) {
