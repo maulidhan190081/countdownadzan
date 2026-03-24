@@ -46,3 +46,21 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match(event.request))
   );
 });
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Focus the app if it's already open
+      if (windowClients.length > 0) {
+        let client = windowClients[0];
+        client.focus();
+        // Send message to the window to play audio precisely now
+        client.postMessage({ action: 'PLAY_AUDIO' });
+      } else {
+        // Otherwise, open a new window
+        self.clients.openWindow('/');
+      }
+    })
+  );
+});
