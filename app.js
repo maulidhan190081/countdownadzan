@@ -1,3 +1,11 @@
+// Nuclear Cache Buster
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(r => r.forEach(reg => reg.unregister()));
+}
+if (window.caches) {
+    caches.keys().then(n => n.forEach(c => caches.delete(c)));
+}
+
 const elements = {
     locationText: document.getElementById('location-text'),
     gregorianDate: document.getElementById('gregorian-date'),
@@ -509,6 +517,19 @@ document.addEventListener('DOMContentLoaded', () => {
         testBtn.addEventListener('click', () => {
             if (nextPrayerObj) nextPrayerObj.date = new Date();
         });
+    }
+    
+    // Scroll-reveal: show schedule section when user scrolls down
+    const scheduleSection = document.querySelector('.schedule-section');
+    if (scheduleSection) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    scheduleSection.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.05 });
+        observer.observe(scheduleSection);
     }
     
     // Compass View Navigation
