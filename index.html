@@ -3,22 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://api.aladhan.com https://nominatim.openstreetmap.org; img-src 'self' data:; media-src 'self'; worker-src 'self' blob:;">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>Waktu Adzan & Hitung Mundur</title>
     <!-- Favicon & PWA -->
     <link rel="icon" type="image/svg+xml" href="assets/gambar/favicon.svg?v=1">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0b0f19">
     <link rel="apple-touch-icon" href="assets/gambar/favicon.png">
-    
-    <!-- Nuclear Cache Buster -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(r => r.forEach(reg => reg.unregister()));
-        }
-        if (window.caches) {
-            caches.keys().then(n => n.forEach(c => caches.delete(c)));
-        }
-    </script>
     
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,54 +19,64 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
     <div class="app-container">
         <!-- Banner Image Overlay at the top -->
         <div class="header-banner"></div>
-        
-        <!-- Header Top Row -->
-        <header class="header">
-            <div class="header-left">
-                <div class="location-badge">
-                    <i class="fa-solid fa-location-dot"></i>
-                    <span id="location-text">Mencari lokasi...</span>
-                </div>
-                <div class="date-info-block">
-                    <div id="gregorian-date">--/--/----</div>
-                    <div id="hijri-date">-- --- ---- H</div>
-                </div>
-            </div>
-            <div class="header-right" style="display: flex; gap: 10px;">
-                <button id="test-adzan-btn" class="theme-toggle-btn" aria-label="Test Adzan" title="Tes Suara & Animasi">
-                    <i class="fa-solid fa-bolt"></i>
-                </button>
-                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
-                    <i class="fa-solid fa-sun"></i>
-                </button>
-            </div>
-        </header>
 
         <!-- Main Application View -->
         <div id="home-view">
-        <main class="countdown-section">
-            <div class="countdown-circle">
-                <svg viewBox="0 0 300 300">
-                    <circle cx="150" cy="150" r="140"></circle>
-                    <circle cx="150" cy="150" r="140" id="progress-circle"></circle>
-                </svg>
-                <div class="countdown-content">
-                    <h2 id="next-prayer-name">Menunggu...</h2>
-                    <div class="timer-display" id="time-remaining">
-                        00:00:00
-                    </div>
-                    <p class="next-prayer-time">pada <span id="next-prayer-time-val">--:--</span></p>
-                </div>
-            </div>
-        </main>
 
-        <!-- Prayer Times List -->
+            <!-- === HERO SECTION (Scroll Snap Target 1) === -->
+            <div class="hero-section">
+                <!-- Header -->
+                <header class="header">
+                    <div class="header-left">
+                        <div class="location-badge">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span id="location-text">Mencari lokasi...</span>
+                        </div>
+                        <div class="date-info-block">
+                            <div id="gregorian-date">--/--/----</div>
+                            <div id="hijri-date">-- --- ---- H</div>
+                        </div>
+                    </div>
+                    <div class="header-right" style="display: flex; gap: 10px;">
+                        <button id="test-adzan-btn" class="theme-toggle-btn" aria-label="Test Adzan" title="Tes Suara & Animasi">
+                            <i class="fa-solid fa-bolt"></i>
+                        </button>
+                        <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+                            <i class="fa-solid fa-sun"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Countdown Circle -->
+                <main class="countdown-section">
+                    <div class="countdown-circle">
+                        <svg viewBox="0 0 300 300">
+                            <circle cx="150" cy="150" r="140"></circle>
+                            <circle cx="150" cy="150" r="140" id="progress-circle"></circle>
+                        </svg>
+                        <div class="countdown-content">
+                            <h2 id="next-prayer-name">Menunggu...</h2>
+                            <div class="timer-display" id="time-remaining">
+                                00:00:00
+                            </div>
+                            <p class="next-prayer-time">pada <span id="next-prayer-time-val">--:--</span></p>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Scroll Hint -->
+                <div class="scroll-hint">
+                    <i class="fa-solid fa-chevron-down"></i>
+                    <span>Jadwal</span>
+                </div>
+            </div> <!-- end .hero-section -->
+
         <section class="schedule-section">
             <h3 class="section-title" style="margin-bottom: 5px;">Jadwal Hari Ini</h3>
             <p class="status-message" id="status-message" style="text-align: left; padding-left: 5px; margin-top: 0;">Aktifkan GPS/Lokasi untuk hasil akurat</p>
@@ -170,6 +172,6 @@
     <audio id="final-countdown-audio" src="assets/audio/marimba_soft.mp3" loop></audio>
 
     <!-- Script -->
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
 </body>
 </html>
